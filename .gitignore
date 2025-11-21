@@ -1,10 +1,18 @@
-# ...existing code...
-ai_code_assistant.txt
-project_status.md
-db.sqlite3
-__pycache__/
-*.pyc
-media/
+# Environment variables
 .env
-.vscode/    
-*.log
+.venv/
+
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

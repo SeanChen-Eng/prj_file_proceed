@@ -24,6 +24,6 @@ urlpatterns = [
     path('', include('file_processor.urls')),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
+# Serve media files in development or when explicitly enabled for playground
+if settings.DEBUG or getattr(settings, 'SERVE_MEDIA', False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

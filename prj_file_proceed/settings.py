@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,12 +32,17 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 50  # 50MB
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-pc%(xjpf*043y7)t+kgwl=omd&46%k4j#dv2d8_9_2*j96il0%'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS should be set via environment variable in production, comma-separated
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else ['localhost', '127.0.0.1','sgibm-scorpio.eur.gd.corp']
+
+# Static files: collectstatic will put files here for nginx to serve
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = '/static/'
 
 
 # Application definition
@@ -131,9 +140,13 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Dify API Configuration
-DIFY_API_KEY = "app-hHgjeWQQtQ1T03MoTaodXvji"
-DIFY_USER = "seanc"
-DIFY_SERVER = "https://api.dify.ai"
+DIFY_API_KEY = os.getenv('DIFY_API_KEY')
+DIFY_USER = os.getenv('DIFY_USER')
+DIFY_SERVER = os.getenv('DIFY_SERVER')
+
+# Allow serving media files directly when running a playground/testing instance.
+# Set SERVE_MEDIA=True in .env to let Django serve MEDIA_URL even when DEBUG=False.
+SERVE_MEDIA = os.getenv('SERVE_MEDIA', 'False').lower() == 'true'
 
 # Login/Logout redirect URLs
 LOGIN_URL = '/auth/login/'
