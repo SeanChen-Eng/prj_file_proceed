@@ -1,0 +1,109 @@
+{% extends 'file_processor/base.html' %}
+
+{% block title %}Video Detection - File Processor{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-4">YOLO Video Detection</h1>
+        <p class="text-lg text-gray-600">Real-time object detection using advanced AI models</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Video Upload Card -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div class="p-6">
+                <div class="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-lg mx-auto mb-4">
+                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2 text-center">Upload Video</h3>
+                <p class="text-gray-600 mb-6 text-center">Upload a video file for object detection analysis</p>
+                <div class="text-center">
+                    <a href="{% url 'upload_video' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Upload Video
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Webcam Detection Card -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div class="p-6">
+                <div class="flex items-center justify-center w-16 h-16 bg-green-100 rounded-lg mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2 text-center">Live Webcam</h3>
+                <p class="text-gray-600 mb-6 text-center">Real-time object detection using your camera</p>
+                <div class="text-center">
+                    <a href="{% url 'webcam_detection' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Start Webcam
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Detections -->
+    <div class="mt-12">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">Recent Detections</h2>
+            <a href="{% url 'detection_list' %}" class="text-purple-600 hover:text-purple-500 font-medium">View All</a>
+        </div>
+        
+        {% if recent_detections %}
+            <div class="bg-white shadow rounded-lg overflow-hidden">
+                <div class="divide-y divide-gray-200">
+                    {% for detection in recent_detections %}
+                    <div class="p-4 hover:bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="flex-shrink-0">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        {% if detection.status == 'completed' %}bg-green-100 text-green-800
+                                        {% elif detection.status == 'failed' %}bg-red-100 text-red-800
+                                        {% elif detection.status == 'processing' %}bg-yellow-100 text-yellow-800
+                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ detection.get_status_display }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ detection }}</p>
+                                    <p class="text-sm text-gray-500">{{ detection.created_at|date:"M d, Y H:i" }}</p>
+                                </div>
+                            </div>
+                            <a href="{% url 'detection_detail' detection.pk %}" class="text-purple-600 hover:text-purple-500 text-sm font-medium">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-white shadow rounded-lg p-6">
+                <p class="text-gray-500 text-center">Start your first detection to see results here</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Features -->
+    <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="text-center">
+            <div class="text-2xl font-bold text-purple-600">Real-time</div>
+            <div class="text-gray-600">Live object detection</div>
+        </div>
+        <div class="text-center">
+            <div class="text-2xl font-bold text-purple-600">Accurate</div>
+            <div class="text-gray-600">YOLO AI model</div>
+        </div>
+        <div class="text-center">
+            <div class="text-2xl font-bold text-purple-600">Fast</div>
+            <div class="text-gray-600">Optimized processing</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -14,6 +14,13 @@ class PDFConversion(models.Model):
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     ])
+    ocr_text = models.JSONField(default=dict, blank=True, help_text='Extracted text from PDF pages')
+    ocr_status = models.CharField(max_length=20, default='not_started', choices=[
+        ('not_started', 'Not Started'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ])
     
     def __str__(self):
         return f"PDF: {os.path.basename(self.pdf_file.name)}"
@@ -42,6 +49,10 @@ class ImageAnalysis(models.Model):
         ('processing', 'Processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
+    ])
+    analysis_type = models.CharField(max_length=20, default='dify', choices=[
+        ('dify', 'Dify API'),
+        ('zhipu', 'ZHIPU Vision'),
     ])
     
     def __str__(self):

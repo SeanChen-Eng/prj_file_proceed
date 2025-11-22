@@ -14,6 +14,30 @@
             <form method="post" class="space-y-6">
                 {% csrf_token %}
                 
+                <!-- Analysis Method Selection -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                        {{ form.analysis_type.label }}
+                    </label>
+                    <div class="space-y-2">
+                        {% for choice in form.analysis_type %}
+                        <div class="flex items-center">
+                            {{ choice.tag }}
+                            <label for="{{ choice.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                                {{ choice.choice_label }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if form.analysis_type.errors %}
+                        <div class="mt-2 text-red-600 text-sm">
+                            {% for error in form.analysis_type.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-4">
                         Select Invoice Images to Analyze (newest first)

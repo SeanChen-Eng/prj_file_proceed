@@ -53,6 +53,66 @@
     </div>
 
     {% if conversion.status == 'completed' %}
+        <!-- OCR Text Extraction Section -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+            <div class="px-6 py-4 bg-gray-50 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-medium text-gray-900">Text Extraction (OCR)</h2>
+                    {% if conversion.ocr_status == 'completed' %}
+                        <a href="{% url 'download_ocr_json' conversion.pk %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            Download JSON
+                        </a>
+                    {% elif conversion.ocr_status == 'not_started' or conversion.ocr_status == 'failed' %}
+                        <a href="{% url 'extract_text' conversion.pk %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            {% if conversion.ocr_status == 'failed' %}Try Again{% else %}Extract Text{% endif %}
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="p-6">
+                {% if conversion.ocr_status == 'completed' %}
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="text-center p-3 bg-blue-50 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600">{{ ocr_summary.total_pages }}</div>
+                            <div class="text-sm text-blue-700">Pages Processed</div>
+                        </div>
+                        <div class="text-center p-3 bg-green-50 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600">{{ ocr_summary.total_text_blocks }}</div>
+                            <div class="text-sm text-green-700">Text Blocks</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600">{{ ocr_summary.total_characters }}</div>
+                            <div class="text-sm text-purple-700">Characters</div>
+                        </div>
+                        <div class="text-center p-3 bg-orange-50 rounded-lg">
+                            <div class="text-2xl font-bold text-orange-600">{{ ocr_summary.average_confidence|floatformat:1 }}%</div>
+                            <div class="text-sm text-orange-700">Avg Confidence</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">Text extraction completed successfully. Click "Download JSON" to get the extracted text data.</p>
+                {% elif conversion.ocr_status == 'processing' %}
+                    <div class="flex items-center text-blue-600">
+                        <svg class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Extracting text from PDF pages...</span>
+                    </div>
+                {% elif conversion.ocr_status == 'failed' %}
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div class="flex items-center text-red-600">
+                            <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            <span>Text extraction failed. Click "Try Again" to retry the extraction.</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-gray-600">Extract text from your PDF using OCR technology. The extracted text will be available as a JSON file for download.</p>
+                {% endif %}
+            </div>
+        </div>
+
         <div class="bg-white shadow-lg rounded-lg overflow-hidden">
             <div class="px-6 py-4 bg-gray-50 border-b">
                 <h2 class="text-lg font-medium text-gray-900">Generated Images</h2>

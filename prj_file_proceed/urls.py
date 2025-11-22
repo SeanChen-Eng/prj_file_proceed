@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('file_processor.urls')),
+    path('video-detection/', include('video_detection.urls')),
 ]
 
 # Serve media files in development or when explicitly enabled for playground

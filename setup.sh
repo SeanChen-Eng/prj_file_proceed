@@ -7,10 +7,15 @@ pip3 install PyMuPDF>=1.23.0
 pip3 install Pillow>=10.0.0
 pip3 install requests>=2.31.0
 pip3 install python-dotenv>=1.0.0
+pip3 install ultralytics>=8.0.0
+pip3 install opencv-python-headless>=4.8.0
+pip3 install torch>=2.0.0
+pip3 install torchvision>=0.15.0
 
 # Create and apply migrations
 echo "Creating migrations..."
 python3 manage.py makemigrations file_processor
+python3 manage.py makemigrations video_detection
 
 echo "Applying migrations..."
 python3 manage.py migrate

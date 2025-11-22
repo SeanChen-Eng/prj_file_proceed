@@ -7,10 +7,12 @@ from django.db import transaction
 from .models import PDFConversion, ConvertedImage, ImageAnalysis, AnalysisResult
 from .forms import PDFUploadForm, CustomUserCreationForm, ImageSelectionForm
 from .services import DifyAPIService
+from .ocr_service import OCRService
 import fitz  # PyMuPDF
 import os
 from django.conf import settings
 import threading
+import json
 
 def home(request):
     return render(request, 'file_processor/home.html')
@@ -53,9 +55,17 @@ def conversion_detail(request, pk):
         return redirect('conversion_list')
     
     images = conversion.images.all()
+    
+    # OCR summary if available
+    ocr_summary = None
+    if conversion.ocr_text:
+        ocr_service = OCRService()
+        ocr_summary = ocr_service.get_text_summary(conversion.ocr_text)
+    
     return render(request, 'file_processor/conversion_detail.html', {
         'conversion': conversion,
-        'images': images
+        'images': images,
+        'ocr_summary': ocr_summary
     })
 
 @login_required
@@ -72,17 +82,27 @@ def image_analysis(request):
         form = ImageSelectionForm(request.user, request.POST)
         if form.is_valid():
             selected_images = form.cleaned_data['selected_images']
+            analysis_type = form.cleaned_data['analysis_type']
             
             # Create analysis record
-            analysis = ImageAnalysis.objects.create(user=request.user)
+            analysis = ImageAnalysis.objects.create(
+                user=request.user,
+                analysis_type=analysis_type
+            )
             analysis.images.set(selected_images)
             
-            # Start analysis in background
-            dify_service = DifyAPIService()
-            thread = threading.Thread(target=dify_service.analyze_images, args=(analysis.id,))
+            # Start analysis in background based on selected type
+            if analysis_type == 'zhipu':
+                from .zhipu_service import ZhipuVisionService
+                service = ZhipuVisionService()
+            else:
+                service = DifyAPIService()
+            
+            thread = threading.Thread(target=service.analyze_images, args=(analysis.id,))
             thread.start()
             
-            messages.success(request, f'Analysis started for {selected_images.count()} images!')
+            model_name = 'ZHIPU Vision' if analysis_type == 'zhipu' else 'Dify API'
+            messages.success(request, f'{model_name} analysis started for {selected_images.count()} images!')
             return redirect('analysis_detail', pk=analysis.pk)
     else:
         form = ImageSelectionForm(request.user)
@@ -154,3 +174,46 @@ def convert_pdf_to_images(pdf_conversion):
         pdf_conversion.status = 'failed'
         pdf_conversion.save()
         print(f"Conversion failed: {str(e)}")
+
+@login_required
+def extract_text(request, pk):
+    """Start OCR text extraction for a PDF"""
+    conversion = get_object_or_404(PDFConversion, pk=pk)
+    if not request.user.is_superuser and conversion.user != request.user:
+        messages.error(request, 'You can only extract text from your own files.')
+        return redirect('conversion_list')
+    
+    if conversion.status != 'completed':
+        messages.error(request, 'PDF conversion must be completed first.')
+        return redirect('conversion_detail', pk=pk)
+    
+    # Reset OCR status and clear previous results if retrying
+    conversion.ocr_status = 'processing'
+    conversion.ocr_text = {}
+    conversion.save()
+    
+    # Start OCR in background
+    ocr_service = OCRService()
+    thread = threading.Thread(target=ocr_service.extract_text_from_pdf, args=(conversion.id,))
+    thread.start()
+    
+    messages.success(request, 'Text extraction started!')
+    return redirect('conversion_detail', pk=pk)
+
+@login_required
+def download_ocr_json(request, pk):
+    """Download OCR results as JSON"""
+    conversion = get_object_or_404(PDFConversion, pk=pk)
+    if not request.user.is_superuser and conversion.user != request.user:
+        messages.error(request, 'You can only download your own files.')
+        return redirect('conversion_list')
+    
+    if not conversion.ocr_text:
+        messages.error(request, 'No OCR text available. Please extract text first.')
+        return redirect('conversion_detail', pk=pk)
+    
+    # Create JSON response
+    response = JsonResponse(conversion.ocr_text, json_dumps_params={'indent': 2, 'ensure_ascii': False})
+    filename = f"{os.path.splitext(os.path.basename(conversion.pdf_file.name))[0]}_ocr_text.json"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

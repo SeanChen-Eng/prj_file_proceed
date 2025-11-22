@@ -1,0 +1,415 @@
+{% extends 'file_processor/base.html' %}
+
+{% block title %}Webcam Detection - Video Detection{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Real-time Object Detection</h1>
+        <p class="text-gray-600">Using your webcam with YOLO AI model</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Video Display -->
+        <div class="lg:col-span-2">
+            <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+                <div class="p-4 bg-gray-50 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">Live Detection</h3>
+                </div>
+                <div class="p-6">
+                    <div class="relative">
+                        <video id="webcam" autoplay muted class="w-full rounded-lg bg-gray-900" style="display: none;"></video>
+                        <canvas id="canvas" class="w-full rounded-lg bg-gray-900"></canvas>
+                        <div id="loading" class="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-lg">
+                            <div class="text-white text-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                                <p>Initializing camera...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-center space-x-4">
+                        <button id="startBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            Start Detection
+                        </button>
+                        <button id="stopBtn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500" disabled>
+                            Stop Detection
+                        </button>
+                        <button id="recordBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                            Start Recording
+                        </button>
+                    </div>
+                    
+                    <div class="mt-2 text-center text-sm text-gray-500">
+                        <p>💡 Webcam detection is real-time only - no video files are saved</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection Results -->
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+                <div class="p-4 bg-gray-50 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">Detection Results</h3>
+                </div>
+                <div class="p-4">
+                    <div id="detectionStats" class="space-y-3">
+                        <div class="text-center text-gray-500">
+                            <p>Start detection to see results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Stats -->
+            <div class="mt-6 bg-white shadow-lg rounded-lg overflow-hidden">
+                <div class="p-4 bg-gray-50 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">Performance</h3>
+                </div>
+                <div class="p-4">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span>FPS:</span>
+                            <span id="fps">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Processing Time:</span>
+                            <span id="processingTime">0ms</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Objects Detected:</span>
+                            <span id="objectCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- How it Works -->
+            <div class="mt-6 bg-white shadow-lg rounded-lg overflow-hidden">
+                <div class="p-4 bg-gray-50 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">How it Works</h3>
+                </div>
+                <div class="p-4 text-sm text-gray-600 space-y-2">
+                    <p>• <strong>Real-time Detection:</strong> Processes 5 frames per second</p>
+                    <p>• <strong>No Video Storage:</strong> Only single frames are sent to server</p>
+                    <p>• <strong>Optional Recording:</strong> Save detection session locally</p>
+                    <p>• <strong>YOLO AI:</strong> Detects 80+ object categories</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let webcam, canvas, ctx;
+let isDetecting = false;
+let detectionInterval;
+let frameCount = 0;
+let startTime = Date.now();
+let isRecording = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    webcam = document.getElementById('webcam');
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+    
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const recordBtn = document.getElementById('recordBtn');
+    const loading = document.getElementById('loading');
+    
+    // Check if we're on HTTPS or localhost
+    const isSecureContext = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    
+    if (!isSecureContext) {
+        loading.innerHTML = `
+            <div class="text-white text-center p-4">
+                <div class="text-red-400 mb-2">
+                    <svg class="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <p class="font-medium mb-2">Camera Requires HTTPS</p>
+                <p class="text-sm text-gray-300 mb-3">Webcam access requires a secure connection (HTTPS) for remote servers.</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <p>• Works on localhost/127.0.0.1</p>
+                    <p>• Requires HTTPS for remote access</p>
+                    <p>• Try uploading video files instead</p>
+                </div>
+                <a href="{% url 'upload_video' %}" class="inline-block mt-3 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    Upload Video Instead
+                </a>
+            </div>
+        `;
+        return;
+    }
+    
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        loading.innerHTML = `
+            <div class="text-white text-center p-4">
+                <p class="font-medium mb-2">Camera Not Supported</p>
+                <p class="text-sm text-gray-300">Your browser doesn't support camera access.</p>
+                <a href="{% url 'upload_video' %}" class="inline-block mt-3 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                    Upload Video Instead
+                </a>
+            </div>
+        `;
+        return;
+    }
+    
+    // Initialize webcam
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: 'user'
+        } 
+    })
+        .then(stream => {
+            webcam.srcObject = stream;
+            webcam.onloadedmetadata = () => {
+                canvas.width = webcam.videoWidth;
+                canvas.height = webcam.videoHeight;
+                loading.style.display = 'none';
+                webcam.style.display = 'block';
+                startBtn.disabled = false;
+                recordBtn.disabled = false;
+                
+                // Setup media recorder for optional recording
+                setupMediaRecorder(stream);
+            };
+        })
+        .catch(err => {
+            let errorMessage = 'Camera access failed';
+            let errorDetails = '';
+            
+            switch(err.name) {
+                case 'NotAllowedError':
+                    errorMessage = 'Camera Access Denied';
+                    errorDetails = 'Please allow camera access and refresh the page.';
+                    break;
+                case 'NotFoundError':
+                    errorMessage = 'No Camera Found';
+                    errorDetails = 'No camera device was found on your system.';
+                    break;
+                case 'NotReadableError':
+                    errorMessage = 'Camera In Use';
+                    errorDetails = 'Camera is already being used by another application.';
+                    break;
+                case 'OverconstrainedError':
+                    errorMessage = 'Camera Constraints Error';
+                    errorDetails = 'Camera doesn\'t support the requested settings.';
+                    break;
+                default:
+                    errorDetails = err.message || 'Unknown error occurred.';
+            }
+            
+            loading.innerHTML = `
+                <div class="text-white text-center p-4">
+                    <div class="text-red-400 mb-2">
+                        <svg class="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <p class="font-medium mb-2">${errorMessage}</p>
+                    <p class="text-sm text-gray-300 mb-3">${errorDetails}</p>
+                    <div class="text-xs text-gray-400 mb-3">
+                        <p>Error: ${err.name}</p>
+                    </div>
+                    <a href="{% url 'upload_video' %}" class="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                        Upload Video Instead
+                    </a>
+                </div>
+            `;
+            console.error('Error accessing webcam:', err);
+        });
+    
+    startBtn.addEventListener('click', startDetection);
+    stopBtn.addEventListener('click', stopDetection);
+    recordBtn.addEventListener('click', toggleRecording);
+});
+
+function startDetection() {
+    if (isDetecting) return;
+    
+    isDetecting = true;
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    
+    frameCount = 0;
+    startTime = Date.now();
+    
+    detectionInterval = setInterval(processFrame, 200); // Process every 200ms (5 FPS)
+}
+
+function stopDetection() {
+    isDetecting = false;
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+    }
+    
+    // Clear canvas and show original webcam feed
+    if (webcam && canvas && ctx) {
+        ctx.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+    }
+    
+    // Reset stats
+    document.getElementById('fps').textContent = '0';
+    document.getElementById('processingTime').textContent = '0ms';
+    document.getElementById('objectCount').textContent = '0';
+    document.getElementById('detectionStats').innerHTML = '<div class="text-center text-gray-500"><p>Detection stopped</p></div>';
+}
+
+function processFrame() {
+    if (!isDetecting || !webcam.videoWidth) return;
+    
+    // Draw current frame to canvas
+    ctx.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+    
+    // Get frame as base64
+    const frameData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    const processingStart = Date.now();
+    
+    // Send frame to server for detection
+    fetch('{% url "process_webcam_frame" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ frame: frameData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const processingTime = Date.now() - processingStart;
+        
+        if (data.success) {
+            // Display result image
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = data.result_image;
+            
+            // Update detection results
+            updateDetectionResults(data.detections);
+            
+            // Update performance stats
+            frameCount++;
+            const elapsed = (Date.now() - startTime) / 1000;
+            const fps = (frameCount / elapsed).toFixed(1);
+            
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('processingTime').textContent = processingTime + 'ms';
+            document.getElementById('objectCount').textContent = data.detections.length;
+        } else {
+            console.error('Detection failed:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function updateDetectionResults(detections) {
+    const statsDiv = document.getElementById('detectionStats');
+    
+    if (detections.length === 0) {
+        statsDiv.innerHTML = '<div class="text-center text-gray-500"><p>No objects detected</p></div>';
+        return;
+    }
+    
+    // Group detections by class
+    const grouped = {};
+    detections.forEach(detection => {
+        const className = detection.class;
+        if (!grouped[className]) {
+            grouped[className] = [];
+        }
+        grouped[className].push(detection);
+    });
+    
+    // Create HTML for results
+    let html = '';
+    Object.keys(grouped).forEach(className => {
+        const count = grouped[className].length;
+        const avgConfidence = (grouped[className].reduce((sum, d) => sum + d.confidence, 0) / count * 100).toFixed(1);
+        
+        html += `
+            <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <span class="font-medium">${className}</span>
+                <div class="text-right">
+                    <div class="text-sm font-medium">${count}</div>
+                    <div class="text-xs text-gray-500">${avgConfidence}%</div>
+                </div>
+            </div>
+        `;
+    });
+    
+    statsDiv.innerHTML = html;
+}
+
+function setupMediaRecorder(stream) {
+    try {
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = function() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            
+            // Create download link
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `webcam-detection-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            recordedChunks = [];
+        };
+    } catch (error) {
+        console.error('MediaRecorder not supported:', error);
+        document.getElementById('recordBtn').style.display = 'none';
+    }
+}
+
+function toggleRecording() {
+    const recordBtn = document.getElementById('recordBtn');
+    
+    if (!isRecording) {
+        // Start recording
+        if (mediaRecorder && mediaRecorder.state === 'inactive') {
+            recordedChunks = [];
+            mediaRecorder.start();
+            isRecording = true;
+            recordBtn.textContent = 'Stop Recording';
+            recordBtn.className = recordBtn.className.replace('bg-blue-600 hover:bg-blue-700', 'bg-red-600 hover:bg-red-700');
+        }
+    } else {
+        // Stop recording
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            isRecording = false;
+            recordBtn.textContent = 'Start Recording';
+            recordBtn.className = recordBtn.className.replace('bg-red-600 hover:bg-red-700', 'bg-blue-600 hover:bg-blue-700');
+        }
+    }
+}
+</script>
+{% endblock %}

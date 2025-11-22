@@ -38,6 +38,16 @@ class CustomUserCreationForm(UserCreationForm):
         return user
 
 class ImageSelectionForm(forms.Form):
+    analysis_type = forms.ChoiceField(
+        choices=[
+            ('dify', 'Dify API (Structured Analysis)'),
+            ('zhipu', 'ZHIPU Vision (AI Vision Model)'),
+        ],
+        initial='dify',
+        widget=forms.RadioSelect(attrs={'class': 'mr-2'}),
+        label='Choose Analysis Method'
+    )
+    
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Get user's images, newest first

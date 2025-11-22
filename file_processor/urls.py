@@ -19,4 +19,8 @@ urlpatterns = [
     path('analysis/', views.image_analysis, name='image_analysis'),
     path('analysis/list/', views.analysis_list, name='analysis_list'),
     path('analysis/detail/<int:pk>/', views.analysis_detail, name='analysis_detail'),
+    
+    # OCR URLs
+    path('extract-text/<int:pk>/', views.extract_text, name='extract_text'),
+    path('download-ocr/<int:pk>/', views.download_ocr_json, name='download_ocr_json'),
 ]
